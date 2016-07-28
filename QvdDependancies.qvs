@@ -1,0 +1,130 @@
+﻿///$tab Set Variables
+SET ThousandSep='.';
+SET DecimalSep=',';
+SET MoneyThousandSep='.';
+SET MoneyDecimalSep=',';
+SET MoneyFormat='#.##0,00 €;-#.##0,00 €';
+SET TimeFormat='h:mm:ss TT';
+SET DateFormat='D/M/YYYY';
+SET TimestampFormat='D/M/YYYY h:mm:ss[.fff] TT';
+SET MonthNames='Ιαν;Φεβ;Μαρ;Απρ;Μαϊ;Ιουν;Ιουλ;Αυγ;Σεπ;Οκτ;Νοε;Δεκ';
+SET DayNames='Δευ;Τρι;Τετ;Πεμ;Παρ;Σαβ;Κυρ';
+SET LongMonthNames='Ιανουάριος;Φεβρουάριος;Μάρτιος;Απρίλιος;Μάιος;Ιούνιος;Ιούλιος;Αύγουστος;Σεπτέμβριος;Οκτώβριος;Νοέμβριος;Δεκέμβριος';
+SET LongDayNames='Δευτέρα;Τρίτη;Τετάρτη;Πέμπτη;Παρασκευή;Σάββατο;Κυριακή';
+SET FirstWeekDay=0;
+SET BrokenWeeks=1;
+SET ReferenceDay=0;
+SET FirstMonthOfYear=1;
+SET CollationLocale='el-GR';
+
+
+
+LocalDrives:
+LOAD
+	SubField('$(vLocalDrives)',',') as LocalDrive
+AutoGenerate(1);
+
+LET vNoOfRows=NoOfRows('LocalDrives');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///$tab Load Qvd Meta Data
+sub GetQVDFIlesData(path)
+    For Each vQvdFile in FileList(path &'\*.qvd')
+    	If Not WildMatch(Lower('$(vQvdFile)'),'*recycle.bin*') THEN
+	        QVDs:
+	            LOAD
+		    		CreatorDoc,
+					Lower('$(vQvdFile)') as QvdName
+				FROM 
+					'$(vQvdFile)' (XmlSimple, Table is [QvdTableHeader]);
+		End If		  
+    Next vQvdFile
+    For Each vSubDirectory in DirList( path & '\*' )
+        Call GetQVDFIlesData('$(vSubDirectory)')
+    Next vSubDirectory
+end sub
+
+
+FOR i=1 to $(vNoOfRows)
+	LET vCurrDrive=FieldValue('LocalDrive',$(i));
+	Call GetQVDFIlesData('$(vCurrDrive)') ;
+NEXT;
+
+///$tab Load Qvw Meta Data
+sub GetQVWDocNames(path)
+    For Each vQvwFile in FileList(path &'\*.qvw') 
+    	if ('$(vQvwFile)' <> DocumentPath()) And (Not WildMatch(Lower('$(vQvwFile)'),'*recycle.bin*')) Then
+	        QVWs:
+	        LOAD
+				'$(vQvwFile)' as UserDoc
+			AutoGenerate(1);
+		End If
+    Next vQvwFile
+    For Each vSubDirectory in DirList( path & '\*' )
+        Call GetQVWDocNames('$(vSubDirectory)')
+    Next vSubDirectory
+
+end sub
+
+
+sub GetQVWLineageInfo(path)
+    For Each vQvwFile in FileList(path &'\*.qvw')
+    	if '$(vQvwFile)' <> DocumentPath() And (Not WildMatch(Lower('$(vQvwFile)'),'*recycle.bin*')) Then
+	        QVWs_X_QVDs:
+	        LOAD
+	    		Discriminator as QvdName,
+				'$(vQvwFile)' as UserDoc
+			FROM 
+				'$(vQvwFile)' (XmlSimple, Table is [DocumentSummary/LineageInfo])
+			Where
+				WildMatch(Lower(Discriminator),'*.qvd*')
+				and
+				Not WildMatch(Lower(Discriminator),'*store *');
+		End If
+    Next vQvwFile
+    For Each vSubDirectory in DirList( path & '\*' )
+        Call GetQVWLineageInfo('$(vSubDirectory)')
+    Next vSubDirectory
+
+end sub
+ 
+
+
+FOR i=1 to $(vNoOfRows)
+	
+	LET vCurrDrive=FieldValue('LocalDrive',$(i));
+	
+	Call GetQVWDocNames('$(vCurrDrive)') ;
+	
+	SET ErrorMode = 0;
+	
+	Call GetQVWLineageInfo('$(vCurrDrive)') ;
+	
+	SET ErrorMode=1;
+	
+NEXT;
+
+
+
+
+
+DROP Table LocalDrives;
+
+
+
+
+
+

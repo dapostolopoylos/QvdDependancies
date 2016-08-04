@@ -1,4 +1,18 @@
-﻿///$tab Set Variables
+﻿///$tab About
+//This is the QvDependancies.qvw (version 1.2) application created by Dimitrios Apostolopoylos.
+//
+//For more information you can visit the following links:
+//
+// GitHub - https://github.com/dapostolopoylos/QvdDependancies
+// Qlik Community - https://community.qlik.com/docs/DOC-17104 
+//
+// You can find the author on:
+//
+// GitHub - https://github.com/dapostolopoylos
+// LinkedIn - https://gr.linkedin.com/in/dapostolop
+// Tweeter - https://twitter.com/dapostolopoylos
+// Qlik Community - https://community.qlik.com/people/dapostolopoylos
+///$tab Set Variables
 SET ThousandSep='.';
 SET DecimalSep=',';
 SET MoneyThousandSep='.';
@@ -27,19 +41,6 @@ AutoGenerate(1);
 LET vNoOfRows=NoOfRows('LocalDrives');
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 ///$tab Load Qvd Meta Data
 sub GetQVDFIlesData(path)
     For Each vQvdFile in FileList(path &'\*.qvd')
@@ -58,11 +59,14 @@ sub GetQVDFIlesData(path)
 end sub
 
 
-FOR i=1 to $(vNoOfRows)
-	LET vCurrDrive=FieldValue('LocalDrive',$(i));
-	Call GetQVDFIlesData('$(vCurrDrive)') ;
-NEXT;
-
+If Match('$(vTypeOfScan)','Full') Then
+	FOR i=1 to $(vNoOfRows)
+		LET vCurrDrive=FieldValue('LocalDrive',$(i));
+		Call GetQVDFIlesData('$(vCurrDrive)') ;
+	NEXT;
+Else
+	Call GetQVDFIlesData('$(vQvdPath)') ;
+EndIf
 ///$tab Load Qvw Meta Data
 sub GetQVWDocNames(path)
     For Each vQvwFile in FileList(path &'\*.qvw') 
@@ -101,30 +105,32 @@ sub GetQVWLineageInfo(path)
 
 end sub
  
+If Match('$(vTypeOfScan)','Full') Then
 
-
-FOR i=1 to $(vNoOfRows)
-	
-	LET vCurrDrive=FieldValue('LocalDrive',$(i));
-	
-	Call GetQVWDocNames('$(vCurrDrive)') ;
-	
-	SET ErrorMode = 0;
-	
-	Call GetQVWLineageInfo('$(vCurrDrive)') ;
-	
-	SET ErrorMode=1;
-	
-NEXT;
-
+	FOR i=1 to $(vNoOfRows)
+		
+		LET vCurrDrive=FieldValue('LocalDrive',$(i));
+		
+		Call GetQVWDocNames('$(vCurrDrive)') ;
+		
+		SET ErrorMode = 0;
+		
+		Call GetQVWLineageInfo('$(vCurrDrive)') ;
+		
+		SET ErrorMode=1;
+		
+	NEXT;
+Else	
+	Call GetQVWDocNames('$(vQvwPath)') ;
+		
+		SET ErrorMode = 0;
+		
+		Call GetQVWLineageInfo('$(vQvwPath)') ;
+		
+		SET ErrorMode=1; 
+EndIf
 
 
 
 
 DROP Table LocalDrives;
-
-
-
-
-
-
